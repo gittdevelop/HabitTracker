@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import type { Habit, HabitFrequency } from './models/types';
-import { HabitService } from './services/HabitService';
-import { StatisticsService, globalMaxStreak } from './services/StatisticsService';
+import { useState, useCallback, useMemo } from 'react';
+import type { HabitFrequency } from './models/types';
+import { useHabits } from './hooks/useHabits';
 import Sidebar from './components/Sidebar';
 import HabitCard from './components/HabitCard';
 import AddModal from './components/AddModal';
@@ -10,29 +9,26 @@ import StatisticsPage from './components/StatisticsPage';
 type Page = 'habits' | 'stats';
 
 export default function App() {
-  const [habits, setHabits]       = useState<Habit[]>(() => HabitService.getAll());
+  const { habits, addHabit, toggleHabit, deleteHabit, done, total, pct, maxStreak } = useHabits();
   const [showModal, setShowModal] = useState(false);
-  const [page, setPage]           = useState<Page>('habits');
+  const [page, setPage] = useState<Page>('habits');
 
-  function handleAdd(name: string, color: string, icon: string, frequency: HabitFrequency) {
-    setHabits(HabitService.add(name, color, icon, frequency));
-  }
+  const openModal  = useCallback(() => setShowModal(true),  []);
+  const closeModal = useCallback(() => setShowModal(false), []);
 
-  function handleToggle(id: string) {
-    setHabits(HabitService.toggleToday(id));
-  }
+  const handleAdd = useCallback(
+    (name: string, color: string, icon: string, frequency: HabitFrequency) => {
+      addHabit(name, color, icon, frequency);
+    },
+    [addHabit],
+  );
 
-  function handleDelete(id: string) {
-    setHabits(HabitService.remove(id));
-  }
-
-  const done      = habits.filter((h) => StatisticsService.isCompletedToday(h)).length;
-  const total     = habits.length;
-  const pct       = total === 0 ? 0 : Math.round((done / total) * 100);
-  const maxStreak = globalMaxStreak(habits);
-
-  const dateLabel = capitalize(
-    new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }),
+  const dateLabel = useMemo(
+    () =>
+      capitalize(
+        new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }),
+      ),
+    [],
   );
 
   return (
@@ -46,7 +42,7 @@ export default function App() {
         <div className="main">
           <div className="topbar">
             <span className="date-label">{dateLabel}</span>
-            <button className="btn-add" onClick={() => setShowModal(true)}>
+            <button className="btn-add" onClick={openModal}>
               <span>+</span> Добавить
             </button>
           </div>
@@ -57,20 +53,18 @@ export default function App() {
                 key={h.id}
                 habit={h}
                 index={i}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
+                onToggle={toggleHabit}
+                onDelete={deleteHabit}
               />
             ))}
-            <div className="card-add-empty" onClick={() => setShowModal(true)}>+</div>
+            <div className="card-add-empty" onClick={openModal}>+</div>
           </div>
         </div>
       ) : (
         <StatisticsPage habits={habits} />
       )}
 
-      {showModal && (
-        <AddModal onAdd={handleAdd} onClose={() => setShowModal(false)} />
-      )}
+      {showModal && <AddModal onAdd={handleAdd} onClose={closeModal} />}
     </div>
   );
 }
