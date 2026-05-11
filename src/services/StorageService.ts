@@ -7,9 +7,9 @@ export const StorageService = {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return [];
-      const parsed = JSON.parse(raw) as Habit[];
+      const parsed = JSON.parse(raw) as Partial<Habit>[];
       // Backwards compat: habits saved before frequency was added default to 'daily'
-      return parsed.map((h) => ({ frequency: 'daily' as const, ...h }));
+      return parsed.map((h) => ({ ...h, frequency: h.frequency ?? 'daily' })) as Habit[];
     } catch {
       return [];
     }
